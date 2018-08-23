@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<meta charset="utf-8"/>
+		<title>Tetris Game</title>
+	</head>
+	
+	<style>
+		.button 
+		{
+			background-color:  #f1f1f1;
+			color: black;
+			padding: 20px 25px;
+			margin: 30px 10px 20px;
+			text-align: center;
+			text-decoration: none;
+			display: inline-block;
+			font-size: 10px;
+			border: 2px solid #d3d3d3;
+		}
+
+		canvas 
+		{
+			display: block;
+			margin: 30px 10px 20px;
+			border:1px solid #d3d3d3;
+		}
+	</style>
+
+	<body onload="startGame()">
+		<h3>The Tetris Game</h3>
+		<canvas width='180' height='240'></canvas>
+		<button onmousedown="moveleft()" ontouchstart="moveleft()" class="button">
+			LEFT
+		</button>
+		<button onmousedown="moveright()" ontouchstart="moveright()" class="button">
+			RIGHT
+		</button>
+		<br><br>
+		<script type="text/javascript">
+			var canvas = document.getElementsByTagName('canvas')[0];
+			var ctx = canvas.getContext('2d');
+
+			var COLS = 9, ROWS = 12;
+			var WIDTH = 180, HEIGHT = 240;
+			var BLOCK_WIDTH = WIDTH / COLS, BLOCK_HEIGHT = HEIGHT / ROWS;
+
+			var tertisGameSpace = [];
+
+			var lost;
+			var interval;
+
+			var current;
+			var currentX, currentY;
+
+			var shapes = [
+				[1],
+				[1,1],
+				[1,1,1],
+				[1,1,1,1]
+			];
+
+			function newShape()
+			{
+				var id = Math.floor(Math.random() * shapes.length);
+
+				current = [];
+				for (var y = 0; y < 4; ++y)
+				{
+					current[y] = [];
+					for (var x = 0; x < 4; ++x)
+					{
+						var i = 4 * y + x;
+						if (typeof shapes[id][i] != 'undefined') 
+						{
+							current[y][x] = id + 1;
+						}
+						else
+						{
+							current[y][x] = 0;
+						}
+					}
+				}
+				currentX = 5;
+				currentY = 0;
+			}
+
+			function initializeGameArea()
+			{
+				var row_count=0;
+				var col_count=0;
+				for (row_count = 0; row_count < ROWS; row_count++)
+				{
+					tertisGameSpace[row_count] = [];
+					for (col_count = 0; col_count < COLS; col_count++)
+					{
+						tertisGameSpace[row_count][col_count] = 0;
+					}
+				}
+			}
+
+			function isValidPosition(offsetX, offsetY, newCurrent)
+			{
+				offsetX = offsetX || 0;
+				offsetY = offsetY || 0;
+				offsetX = currentX + offsetX;
+				offsetY = currentY + offsetY;
+				newCurrent = newCurrent || current;
+
+				for (var y = 0; y < 4; ++y)
+				{
+					for (var x = 0; x < 4; ++x)
+					{
+						if (newCurrent[y][x])
+						{
+							if (typeof tertisGameSpace[y + offsetY] == 'undefined'
+							  || typeof tertisGameSpace[y + offsetY][x + offsetX] == 'undefined'
+							  || tertisGameSpace[y + offsetY][x + offsetX]
+							  || x + offsetX < 0
+							  || y + offsetY >= ROWS
+							  || x + offsetX >= COLS)
+							{
+								if (offsetY == 1 && (typeof tertisGameSpace[y + offsetY][x + offsetX]) != 'undefined')
+								{
+									lost = true;
+								}
+								return false;
+							}
+						}
+					}
+				}
+				return true;
+			}
+
+			function collapseFilledRow()
+			{
+				for (var y = ROWS - 1; y >= 0; --y)
+				{
+					var rowFilled = true;
+					for (var x = 0; x < COLS; ++x)
+					{
+						if (tertisGameSpace[y][x] == 0)
+						{
+							rowFilled = false;
+							break;
+						}
+					}
+					if (rowFilled)
+					{
+						for (var yy = y; yy > 0; --yy)
+						{
+							for (var x = 0; x < COLS; ++x)
+							{
+								tertisGameSpace[yy][x] = tertisGameSpace[yy - 1][x];
+							}
+						}
+						++y;
+					}
+				}
+			}
+
+			function renderGame()
+			{
+				var updated_row;
+				var updated_col;
+				var row_count;
+				var col_count;
+				ctx.clearRect(0, 0, WIDTH, HEIGHT);
+				ctx.fillStyle='red';			
+
+				for (col_count = 0; col_count < COLS; col_count++)
+				{
+					for (row_count = 0; row_count < ROWS; row_count++)
+					{
+						if (tertisGameSpace[row_count][col_count]) 
+						{
+							ctx.fillRect(BLOCK_WIDTH * col_count, BLOCK_HEIGHT * row_count, BLOCK_WIDTH, BLOCK_HEIGHT);
+						}
+					}
+				}
+				for (var col_count = 0; col_count < 4; col_count++)
+				{
+					for (var row_count = 0; row_count < 4; row_count++)
+					{
+						if (current[col_count][row_count])
+						{
+							var updated_row=currentX + row_count;
+							var updated_col=currentY + col_count;
+
+							ctx.fillRect(BLOCK_WIDTH * updated_row, BLOCK_HEIGHT * updated_col, BLOCK_WIDTH, BLOCK_HEIGHT);
+						}
+					}
+				}
+			}
+
+			function moveleft()
+			{
+				if(isValidPosition(-1))
+				{
+					--currentX;
+				}
+			}
+
+
+			function moveright()
+			{
+				if (isValidPosition(1))
+				{
+					++currentX;
+				}
+			}
+
+			function playGame()
+			{
+				if (isValidPosition(0,1))
+				{
+					++currentY;
+				}
+				else 
+				{
+					for (var y = 0; y < 4; ++y)
+					{
+						for (var x = 0; x < 4; ++x)
+						{
+							if (current[y][x])
+							{
+								tertisGameSpace[y + currentY][x + currentX] = current[y][x];
+							}
+						}
+					}
+					collapseFilledRow();
+					if (lost)
+					{
+						alert("Game Over!");
+						startGame();
+						return false;
+					}
+					newShape();
+				}
+			}
+
+			function startGame()
+			{
+				clearInterval(interval);
+				initializeGameArea();
+				newShape();
+				lost = false;
+				interval = setInterval(playGame, 500);
+				setInterval(renderGame, 35);
+			}
+		</script>
+	</body>
+</html>
